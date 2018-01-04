@@ -1,1 +1,282 @@
 
+%%Reading the VMD generated (from the trajectories from LAMMPS) file in 3D matrix form
+% D is 3D matrix where the 3rd dimension indicates the frame no.
+% the 1st column in D is the atom id, the 2nd 3rd and 4th represent the x,
+% y, z coordinates respectively
+
+
+fid = fopen('D:\vaishali-data\G_CTAB\LAMMPS_Data\data_CW_20ww_NPT_12');  %N=409032 header=2
+%fid = fopen('C:\Users\IISC\Desktop\12_1.dat');  %N=409032 header=2
+
+%fid = fopen('D:\vaishali-data\G_CTAB\LAMMPS_Data\CTAB\data_CW_20ww_NPT_3');  %N=405000 header=2
+
+
+    formatSpec = '%f %f %f %f';  
+    clear Data
+    k = 0; 
+    N = 409032; % No. of atoms in a frame0
+    %N = 405000; % No. of atoms in a frame0
+  
+    while  ~feof( fid )
+       
+    	k = k+1;
+%          if mod(k,10) == 0
+%             k
+%          end   
+      
+        header = textscan( fid,'%s',2,'Delimiter', '\t');
+        x = textscan( fid,formatSpec,N, 'Delimiter', '\t');
+               
+        
+        mat=cell2mat(cellfun(@double,x,'UniformOutput',false)); 
+            if k ==1
+               Data = mat;
+%             else         
+%                Data=cat(3,Data,mat);               
+            end  
+%        
+    end
+
+  
+    fclose( fid );
+
+    clear fid formatSpec k N header x mat
+       
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Extraction of ctab and sheets atoms into the ctab matrix and sheet matrix.
+% The num rows of the matrix is equivalent to the number of atoms and the
+% num colms corresponds to the x, y and z coordinates.
+
+Total_Num_Atoms = size(Data,1);
+sheet_num_atoms = numel(find(Data(:,1)==7));
+ctab_num_mol = numel(find(Data(:,1)==4));
+ctab_num_atoms = 62;
+ctab = zeros(ctab_num_mol*ctab_num_atoms,4);
+sheet = zeros(sheet_num_atoms,4);
+
+j = 1;
+k = 1;
+t = 1;
+% id = 1 -> Bromine atom
+% id = 2 or 3 or 4 -> ctab
+% id = 5 or 6 -> water
+% id = 7 -> sheet
+
+for i = 1:Total_Num_Atoms
+    t = t+1;
+    if Data (i,1) == 2 || Data(i,1) == 3 || Data(i,1) == 4
+            ctab(j,:) = Data(i,:);
+            j = j+1;
+    else if Data(i,1) == 7
+            sheet(k,:) = Data(i,:);
+            k = k+1;
+        end
+    end
+    if mod(t,10000) == 0
+        t;
+    end
+end
+ clear i j k t
+ 
+%% Reshape the ctab matrix into Mol matrix
+% Num rows corresponds to the number of atoms in one ctab molecule, and the
+% num colums corresponds to the total number of ctab molecules and the num
+% of matrices in three D corresponds to the three corrdinate axis - x,y,z.
+
+Mol=reshape((reshape(ctab(:,2:4),[size(ctab,1) 1 3])),[ctab_num_atoms ctab_num_mol 3]);
+ng_dist = 8;
+
+%% sheet properties
+x_sheet_max = max(sheet(:,2));         
+x_sheet_min = min(sheet(:,2));
+y_sheet_max = max(sheet(:,3));
+y_sheet_min = min(sheet(:,3));
+z_sheet_avg = mean(sheet(:,4));
+
+ctab(:,7) = ctab(:,4) - z_sheet_avg;
+distance = 6;
+z_sheet_max = z_sheet_avg + distance;
+% z_sheet_min = z_sheet_avg - distance;
+z_sheet_min = z_sheet_avg - distance;
+
+
+%% Finding neighbours
+% Calculate the distance between every atom of every molecule with every 
+% other atom of another molecule. If even a single distance between two 
+% molecules is less than the specified neighbouring distance 'ng_dist', then
+% these molecules are considered as neighbours. 'NG' matrix consists the list
+% of all neighbours of every molecule.
+
+tic
+NG=cell(ctab_num_mol,1);
+for i = 1:ctab_num_mol
+    
+    k  = 1;    
+    for j = (i+1):ctab_num_mol
+        flag = 0;
+       % if j>i
+            for m = 1:ctab_num_atoms
+                for n = 1:ctab_num_atoms
+                    if (sqrt(((Mol(m,i,1)-Mol(n,j,1))^2)+((Mol(m,i,2)-Mol(n,j,2))^2)+((Mol(m,i,3)-Mol(n,j,3))^2)))<=ng_dist
+                        NG{i}(k,1) = j;
+                        k=k+1;
+                        flag = 1;
+                        break
+                    end
+                end
+                if(flag==1)
+                    break
+                end
+            end
+       % end        
+    end
+    if size(NG{i},1)==0
+       NG{i}=0;
+    end
+    k = 0;
+end
+
+toc
+
+clear i j l m n flag
+
+%% Neighbours of only adsorbedd molecules
+% Find only those molecules which lie within the sheet's coordinates and
+% those that are monolayered. The molecule id's those molecules that
+% satisfy these conditions are found in the vector 'mol'. 'NG' contains the
+% list of all neighbours of theses adsorbed molecules in 'mol'.
+
+Mol_X = [];
+Mol_X = find(any(Mol(:,:,1)<=x_sheet_max & Mol(:,:,1)>=x_sheet_min));
+
+Mol_Y = [];
+Mol_Y = find(any(Mol(:,:,2)<=y_sheet_max & Mol(:,:,2)>=y_sheet_min));
+
+Mol_Z = [];
+Mol_Z = find((any(Mol(:,:,3)>=z_sheet_min)) & (any(Mol(:,:,3)<=z_sheet_max)));
+%Mol_pos_Z = find((all(Mol(:,:,3)>z_sheet_min)) & (Mol(50,:,3)<10));
+%Mol_pos_Z = find((all(Mol(:,:,3)>z_sheet_min)) & ((Mol(50,:,3)>10)&(any(Mol(:,:,3)<z_sheet_max))));
+
+mol =[];
+NG_adb = [];
+mol = intersect(intersect(Mol_X,Mol_Y),Mol_Z);
+adb_mol_num = size(mol,2);
+
+NG_adb = NG(mol,:);
+%%
+%alpha1 -> 48
+%alpha2 -> 49
+%beta1 -> 45
+%beta2 -> 46
+%gamma1 -> 43
+%gamma2 -> 44
+%head_A1 -> 52
+%head_A2 -> 53
+%head_A3 -> 54
+%head_B1 -> 56
+%head_B2 -> 57
+%head_B3 -> 58
+%head_C1 -> 60
+%head_C2 -> 61
+%head_C3 -> 62
+%tail1 -> 1
+%tail2 -> 5
+%tail3 -> 6
+
+Mol_avg = [];
+
+Mol_avg(1,:,1:3) = mean(Mol(48:49,:,:));
+Mol_avg(2,:,1:3) = mean(Mol(45:46,:,:));
+Mol_avg(3,:,1:3) = mean(Mol(43:44,:,:));
+Mol_avg(4,:,1:3) = mean([mean(Mol(52:54,:,:));mean(Mol(56:58,:,:));mean(Mol(60:62,:,:))]);
+Mol_avg(5,:,1:3) = mean(Mol([1,5:6],:,:));
+
+
+%% Finding distances
+
+
+dist = cell(adb_mol_num,20);
+tic
+for i = 1:adb_mol_num
+    num_NG = size(NG_adb{i},1);
+    for j = 1:num_NG
+        if NG_adb{i}~=0
+            
+            dist{i,1}(j,1) = norm([Mol_avg(1,mol(i),1) Mol_avg(1,mol(i),2) Mol_avg(1,mol(i),3)]-[Mol_avg(2,NG_adb{i}(j),1) Mol_avg(2,NG_adb{i}(j),2) Mol_avg(2,NG_adb{i}(j),3)]);%alphaA-betaB
+            dist{i,2}(j,1) = norm([Mol_avg(1,mol(i),1) Mol_avg(1,mol(i),2) Mol_avg(1,mol(i),3)]-[Mol_avg(3,NG_adb{i}(j),1) Mol_avg(3,NG_adb{i}(j),2) Mol_avg(3,NG_adb{i}(j),3)]);%alphaA-gammaB
+            dist{i,3}(j,1) = norm([Mol_avg(1,mol(i),1) Mol_avg(1,mol(i),2) Mol_avg(1,mol(i),3)]-[Mol_avg(4,NG_adb{i}(j),1) Mol_avg(4,NG_adb{i}(j),2) Mol_avg(4,NG_adb{i}(j),3)]);%alphaA-headB
+            dist{i,4}(j,1) = norm([Mol_avg(1,mol(i),1) Mol_avg(1,mol(i),2) Mol_avg(1,mol(i),3)]-[Mol_avg(5,NG_adb{i}(j),1) Mol_avg(5,NG_adb{i}(j),2) Mol_avg(5,NG_adb{i}(j),3)]);%alphaA-tailB
+            dist{i,5}(j,1) = norm([Mol_avg(2,mol(i),1) Mol_avg(2,mol(i),2) Mol_avg(2,mol(i),3)]-[Mol_avg(1,NG_adb{i}(j),1) Mol_avg(1,NG_adb{i}(j),2) Mol_avg(1,NG_adb{i}(j),3)]);%betaA-alphaB
+            dist{i,6}(j,1) = norm([Mol_avg(2,mol(i),1) Mol_avg(2,mol(i),2) Mol_avg(2,mol(i),3)]-[Mol_avg(3,NG_adb{i}(j),1) Mol_avg(3,NG_adb{i}(j),2) Mol_avg(3,NG_adb{i}(j),3)]);%betaA-gammaB
+            dist{i,7}(j,1) = norm([Mol_avg(2,mol(i),1) Mol_avg(2,mol(i),2) Mol_avg(2,mol(i),3)]-[Mol_avg(4,NG_adb{i}(j),1) Mol_avg(4,NG_adb{i}(j),2) Mol_avg(4,NG_adb{i}(j),3)]);%betaA-headB
+            dist{i,8}(j,1) = norm([Mol_avg(2,mol(i),1) Mol_avg(2,mol(i),2) Mol_avg(2,mol(i),3)]-[Mol_avg(5,NG_adb{i}(j),1) Mol_avg(5,NG_adb{i}(j),2) Mol_avg(5,NG_adb{i}(j),3)]);%betaA-tailB
+            dist{i,9}(j,1) = norm([Mol_avg(3,mol(i),1) Mol_avg(3,mol(i),2) Mol_avg(3,mol(i),3)]-[Mol_avg(1,NG_adb{i}(j),1) Mol_avg(1,NG_adb{i}(j),2) Mol_avg(1,NG_adb{i}(j),3)]);%gammaA-alphaB
+            dist{i,10}(j,1) = norm([Mol_avg(3,mol(i),1) Mol_avg(3,mol(i),2) Mol_avg(3,mol(i),3)]-[Mol_avg(2,NG_adb{i}(j),1) Mol_avg(2,NG_adb{i}(j),2) Mol_avg(2,NG_adb{i}(j),3)]);%gammaA-betaB
+            dist{i,11}(j,1) = norm([Mol_avg(3,mol(i),1) Mol_avg(3,mol(i),2) Mol_avg(3,mol(i),3)]-[Mol_avg(4,NG_adb{i}(j),1) Mol_avg(4,NG_adb{i}(j),2) Mol_avg(4,NG_adb{i}(j),3)]);%gammaA-headB
+            dist{i,12}(j,1) = norm([Mol_avg(3,mol(i),1) Mol_avg(3,mol(i),2) Mol_avg(3,mol(i),3)]-[Mol_avg(5,NG_adb{i}(j),1) Mol_avg(5,NG_adb{i}(j),2) Mol_avg(5,NG_adb{i}(j),3)]);%gammaA-tailB
+            dist{i,13}(j,1) = norm([Mol_avg(4,mol(i),1) Mol_avg(4,mol(i),2) Mol_avg(4,mol(i),3)]-[Mol_avg(1,NG_adb{i}(j),1) Mol_avg(1,NG_adb{i}(j),2) Mol_avg(1,NG_adb{i}(j),3)]);%headA-alphaB
+            dist{i,14}(j,1) = norm([Mol_avg(4,mol(i),1) Mol_avg(4,mol(i),2) Mol_avg(4,mol(i),3)]-[Mol_avg(2,NG_adb{i}(j),1) Mol_avg(2,NG_adb{i}(j),2) Mol_avg(2,NG_adb{i}(j),3)]);%headA-betaB
+            dist{i,15}(j,1) = norm([Mol_avg(4,mol(i),1) Mol_avg(4,mol(i),2) Mol_avg(4,mol(i),3)]-[Mol_avg(3,NG_adb{i}(j),1) Mol_avg(3,NG_adb{i}(j),2) Mol_avg(3,NG_adb{i}(j),3)]);%headA-gammaB
+            dist{i,16}(j,1) = norm([Mol_avg(4,mol(i),1) Mol_avg(4,mol(i),2) Mol_avg(4,mol(i),3)]-[Mol_avg(5,NG_adb{i}(j),1) Mol_avg(5,NG_adb{i}(j),2) Mol_avg(5,NG_adb{i}(j),3)]);%headA-tailB
+            dist{i,17}(j,1) = norm([Mol_avg(5,mol(i),1) Mol_avg(5,mol(i),2) Mol_avg(5,mol(i),3)]-[Mol_avg(1,NG_adb{i}(j),1) Mol_avg(1,NG_adb{i}(j),2) Mol_avg(1,NG_adb{i}(j),3)]);%tailA-alphaB
+            dist{i,18}(j,1) = norm([Mol_avg(5,mol(i),1) Mol_avg(5,mol(i),2) Mol_avg(5,mol(i),3)]-[Mol_avg(2,NG_adb{i}(j),1) Mol_avg(2,NG_adb{i}(j),2) Mol_avg(2,NG_adb{i}(j),3)]);%tailA-betaB
+            dist{i,19}(j,1) = norm([Mol_avg(5,mol(i),1) Mol_avg(5,mol(i),2) Mol_avg(5,mol(i),3)]-[Mol_avg(3,NG_adb{i}(j),1) Mol_avg(3,NG_adb{i}(j),2) Mol_avg(3,NG_adb{i}(j),3)]);%tailA-gammaB
+            dist{i,20}(j,1) = norm([Mol_avg(5,mol(i),1) Mol_avg(5,mol(i),2) Mol_avg(5,mol(i),3)]-[Mol_avg(4,NG_adb{i}(j),1) Mol_avg(4,NG_adb{i}(j),2) Mol_avg(4,NG_adb{i}(j),3)]);%tailA-headB
+            
+                        
+        end
+    end
+    
+end
+toc
+%%
+
+HT_gctab = cell2mat(dist(:,16));%sort(cell2mat(dist(:,16)));
+TH_gctab = cell2mat(dist(:,20));%sort(cell2mat(dist(:,20)));
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%head-tail distance in a single molecule
+
+
+for i = 1:adb_mol_num
+    HT_dist_gctab(i) = norm([Mol_avg(4,mol(i),1) Mol_avg(4,mol(i),2) Mol_avg(4,mol(i),3)]-[Mol_avg(5,mol(i),1) Mol_avg(5,mol(i),2) Mol_avg(5,mol(i),3)]);
+end
+figure
+histogram(HT_dist_gctab)
+avg_HT = mean(HT_dist_gctab)
+    
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% plot neighbour distance all
+
+retval_gctab = min(HT_gctab,TH_gctab);
+
+figure
+
+h2 = histogram(retval_gctab);
+h2.Normalization = 'probability';
+h2.BinWidth = 0.5;
+%%
+
+
+[f2,x2] = ksdensity(retval_gctab,'width',1.3);
+[f6,x6] = ksdensity(HT_dist_gctab,'width',1.0);
+
+figure
+plot(x2,f2,'r','LineWidth',2.0)
+hold on
+plot(x6,f6,'b','LineWidth',2.0)
+
+xlabel('Head to Tail Distance (A)','fontsize',16,'FontWeight','bold'); ylabel('Probability Density Function','fontsize',16,'FontWeight','bold');
+Ax = gca
+Ax.XLim = [0 35];
+Ax.YLim = [0 0.1]
+Ax.GridLineStyle = 'None'
+Ax.LineWidth = 2.0;
+Ax.TickDir = 'out';
+Ax.FontSize = 14;
+Ax.FontWeight = 'bold'
+Ax.XTick = 0:5:35;
+Ax.YTick = 0:0.05:0.2;
+Ax.YAxisLocation = 'right'
+Ax.XAxisLocation = 'bottom'
+    
