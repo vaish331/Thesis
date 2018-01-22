@@ -1,1 +1,161 @@
+%   filename_2D = 'D:\vaishali-data\Dropbox\NMR\Graphene\MATLAB_ROESY\ROESY_G_NMP\1.asc';
 
+%%
+NMR_data = dlmread(filename_2D,' ',1,0);
+
+xpoints = 819;
+%xpoints = 3277;
+blockpoints = 512;
+NMR_data = NMR_data(1:xpoints*blockpoints,1:3);
+
+filename_1D = 'D:\vaishali-data\Dropbox\NMR\MATLAB_NMR_PLOT\G_NMP\5 JUL 2016_Pure NMP_1H-1.asc';
+
+data = dlmread(filename_1D,' ',1,0);
+
+clear filename_1D filename_2D
+
+intensity = [];
+for i = 1:blockpoints
+ for  j = 1:xpoints
+    intensity(j,i,:) = [NMR_data( (i-1)*xpoints+j,2), NMR_data( (i-1)*xpoints+j,1),NMR_data( (i-1)*xpoints+j,3)];
+    
+ end
+end
+size(intensity);
+
+clear NMR_data i j
+%% Positive and negative intensity
+I = [];
+G = [];
+R = [];
+I  = intensity(:,:,3)';
+G = I;
+G(G<0)=0; 
+R = I;
+R(R>0)=0;
+        
+%%
+maxi = abs(max(max(G)));
+mini = abs(min(min(R)));
+ 
+if maxi > mini
+    diag = -G;
+    cross = -R;
+else 
+    diag = R;
+    cross = G;
+end
+
+clear maxi mini
+%% Plot
+
+yMat = intensity(:,:,2)' ;
+xMat = intensity(:,:,1)';
+zMat = diag + cross;
+zMat_cross = cross;
+zMat_diag = -diag;
+
+%%
+% figure
+% contour3(xMat,yMat,zMat)
+
+clear intensity cross diag data I G R xpoints blockpoints
+%%
+
+th_cross = 0.003;
+ind_cross = zMat_cross>th_cross;
+X_cross = xMat(ind_cross);
+Y_cross = yMat(ind_cross);
+Z_cross = zMat_cross(ind_cross);
+clustNum_cross = 100; 
+T_cross = clusterdata([X_cross Y_cross],'linkage','weighted','maxclust',15); 
+% clr = [0,0,0;0,1,0;0.6,0,0;0,1,1;1,0,0;1,1,0;1,0,1;0,0.4,0;0.4,0,0.8;1,0.5,0;0.1,0.2,0;0,0,1;0.4,0.1,0];
+figure
+g_cross = gscatter(X_cross,Y_cross,T_cross);
+hold on
+% s2 = scatter3(xMat(:),yMat(:),zMat_cross(:));
+s_cross = mesh(xMat,yMat,zMat_cross)
+hold on
+surf([1.9 1.9 3.7 3.7],[1.9 3.7 1.9 3.7],ones(4)*th_cross,'FaceColor','k','FaceAlpha',0.5)
+hold on
+%%
+DT = [];
+K = [];
+v = [];
+peak_vol_cross = [];
+for k = 1:max(T_cross)
+    k;
+    if size(find(T_cross==k),1)>3
+        valid = T_cross==k
+        % claculate a triangulation of the data:
+        DT = delaunayTriangulation([X_cross(valid) Y_cross(valid) Z_cross(valid)]);
+        if size(DT,1) ~= 0
+            [K,v] = convexHull(DT); % get the convex hull indices
+            % plot the volume:
+            v;
+            peak_vol_cross(k,1) = k;
+            peak_vol_cross(k,2) = v;
+            ts = trisurf(K,DT.Points(:,1),DT.Points(:,2),DT.Points(:,3),'FaceColor','r','FaceAlpha',0.3);
+            str = num2str(v);
+            text(max(DT.Points(:,1)),min(DT.Points(:,2)), str)
+            hold on
+        end
+    end
+end
+
+ax = gca
+ax.XLim = [1.9 3.7];
+ax.YLim = [1.9 3.7];
+view(-180,90)
+%%
+th_diag = 0.1;
+ind_diag = zMat_diag>th_diag;
+X_diag = xMat(ind_diag);
+Y_diag = yMat(ind_diag);
+Z_diag = zMat_diag(ind_diag);
+clustNum_diag =6; 
+T_diag = clusterdata([X_diag Y_diag],'linkage','weighted','maxclust',4); 
+%clr = [0,0,0;0,1,0;0.6,0,0;0,1,1;1,0,0;1,1,0;1,0,1;0,0.4,0;0.4,0,0.8;1,0.5,0;0.1,0.2,0;0,0,1;0.4,0.1,0];
+figure
+g_diag = gscatter(X_diag,Y_diag,T_diag);
+hold on
+% s2 = scatter3(xMat(:),yMat(:),zMat_diag(:));
+s_diag = mesh(xMat,yMat,zMat_diag)
+hold on
+surf([1.9 1.9 3.7 3.7],[1.9 3.7 1.9 3.7],ones(4)*th_diag,'FaceColor','k','FaceAlpha',0.5)
+hold on
+%%
+DT = [];
+K = [];
+v = [];
+peak_vol_diag = [];
+for k = 1:max(T_diag)
+    k;
+    if size(find(T_diag==k),1)>3
+        valid = T_diag==k;
+        % claculate a triangulation of the data:
+        DT = delaunayTriangulation([X_diag(valid) Y_diag(valid) Z_diag(valid)]);
+        if size(DT,1) ~= 0
+            [K,v] = convexHull(DT); % get the convex hull indices
+            % plot the volume:
+            v;
+            peak_vol_diag(k,1) = k;
+            peak_vol_diag(k,2) = v;
+            ts = trisurf(K,DT.Points(:,1),DT.Points(:,2),DT.Points(:,3),'FaceColor','r','FaceAlpha',0.3);
+            str = num2str(v);
+            text(max(DT.Points(:,1)),min(DT.Points(:,2)), str)
+            hold on
+        end
+    end
+end
+
+ax = gca
+ax.XLim = [1.9 3.7];
+ax.YLim = [1.9 3.7];
+view(-180,90)
+%%
+
+% clear clustNum_cross clustNum_diag DT ind_cross ind_diag k K T_cross T_diag th_cross th_diag ts v valid X_cross X_diag xMat Y_cross Y_diag yMat Z_cross Z_diag zMat_cross zMat_diag
+% 
+% peak_vol_cross = peak_vol_cross(peak_vol_cross(:,1)>0,:);
+% peak_vol_diag = peak_vol_diag(peak_vol_diag(:,1)>0,:);
