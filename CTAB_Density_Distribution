@@ -1,1 +1,446 @@
+%%Reading the file in 3D matrix form
+% D is 3D matrix where the 3rd dimension indicates the frame no.
+% the 1st column in D is the atom id, the 2nd 3rd and 4th represent the x,
+% y, z coordinates respectively
 
+
+fid = fopen('D:\vaishali-data\G_CTAB\LAMMPS_Data\data_CW_20ww_NPT_12');  %N=409032 header=2
+
+
+    formatSpec = '%f %f %f %f';  
+    clear Data
+    k = 0; 
+    N = 409032; % No. of atoms in a frame0
+    %N = 405000; % No. of atoms in a frame0
+  
+    while  ~feof( fid )
+       
+    	k = k+1;     
+        header = textscan( fid,'%s',2,'Delimiter', '\t');
+        x = textscan( fid,formatSpec,N, 'Delimiter', '\t');
+               
+        
+        mat=cell2mat(cellfun(@double,x,'UniformOutput',false)); 
+            if k ==1
+               Data = mat;       
+            end  
+
+    end
+
+  
+    fclose( fid );
+
+    clear fid formatSpec k N header x mat
+       
+    
+Total_Num_Atoms = size(Data,1);
+sheet = Data(1:4032,:);
+All_mol = Data(4033:end,:);
+sheet_avg = mean(sheet(:,4));
+All_mol(:,5) = All_mol(:,4)-sheet_avg;
+k = 1;
+m = 1;
+n = 1;
+p = 1;
+
+for i = 1:length(All_mol)
+    if All_mol(i,1) == 4
+        N(k,1) = All_mol(i,5);
+        k = k+1;
+    else if All_mol(i,1) == 6
+            O(m,1) = All_mol(i,5);
+            m = m+1;
+        else if All_mol(i,1) == 1
+                Br(n,1) = All_mol(i,5);
+                n = n+1;
+            else if All_mol(i,1) == 2;
+                    C(p,:) = All_mol(i,:);
+                    p = p+1;
+                end
+            end
+        end
+    end
+end
+
+
+C_head = [];
+C_tail = [];
+
+for i = 0:1080-1
+    C_tail(i+1,1) = C(19*i+1,5);
+    C_head(i+1,1) = C(19*i+17,5);
+    C_head(i+1,2) = C(19*i+18,5);
+    C_head(i+1,3) = C(19*i+19,5);
+    C_mid_3(i+1,1) = C(19*i+3,5);
+    C_mid_4(i+1,1) = C(19*i+4,5);
+    C_mid_5(i+1,1) = C(19*i+5,5);
+    C_mid_6(i+1,1) = C(19*i+6,5);
+    C_mid_7(i+1,1) = C(19*i+7,5);
+    C_mid_8(i+1,1) = C(19*i+8,5);
+    C_mid_9(i+1,1) = C(19*i+9,5);
+    C_mid_10(i+1,1) = C(19*i+10,5);
+    C_mid_11(i+1,1) = C(19*i+11,5);
+    C_mid_12(i+1,1) = C(19*i+12,5);
+end
+ C_head = mean(C_head,2);
+%%
+[h1,t1] = hist(N);
+hold on
+[h2,t2] = hist(O);
+hold on
+[h3,t3] = hist(Br);
+hold on
+[h4,t4] = hist(C_head);
+hold on
+[h5,t5] = hist(C_tail);
+hold on
+[h6,t6] = hist(C_mid_3);
+hold on
+[h7,t7] = hist(C_mid_4);
+hold on
+[h8,t8] = hist(C_mid_5);
+hold on
+[h9,t9] = hist(C_mid_6);
+hold on
+[h10,t10] = hist(C_mid_7);
+hold on
+[h11,t11] = hist(C_mid_8);
+hold on
+[h12,t12] = hist(C_mid_9);
+hold on
+[h13,t13] = hist(C_mid_10);
+hold on
+[h14,t14] = hist(C_mid_11);
+hold on
+[h15,t15] = hist(C_mid_12);
+
+%%
+ 
+Bin = ceil(max(Data(:,4))- min(Data(:,4)));
+
+ bin_size=1;
+ Nbin = ceil((max(N)-min(N))/bin_size);
+%  figure
+ hist(N,Bin)
+ [n1,x1] = hist(N,Bin);
+ s1 = sum(n1);
+
+result_y1 =[];
+result_x1 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y1(i) = mean(n1(i:(i+window_size)));
+    result_x1(i) = mean(x1(i:(i+window_size)));
+end
+
+ bin_size=1;
+ Obin = ceil((max(O)-min(O))/bin_size);
+%  figure
+ hist(O,Bin)
+ [n2,x2] = hist(O,Bin);
+s2 = sum(n2);
+ 
+result_y2 =[];
+result_x2 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y2(i) = mean(n2(i:(i+window_size)));
+    result_x2(i) = mean(x2(i:(i+window_size)));
+end
+ 
+ bin_size=1;
+ Bbin = ceil((max(Br)-min(Br))/bin_size);
+%  figure
+ hist(Br,Bin)
+ [n3,x3] = hist(Br,Bin);
+ s3 = sum(n3);
+ 
+result_y3 =[];
+result_x3 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y3(i) = mean(n3(i:(i+window_size)));
+    result_x3(i) = mean(x3(i:(i+window_size)));
+end
+
+ bin_size=1;
+ Bbin = ceil((max(C_head)-min(C_head))/bin_size);
+%  figure
+ hist(C_head,Bin)
+ [n4,x4] = hist(C_head,Bin);
+ s4 = sum(n4);
+ 
+result_y4 =[];
+result_x4 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y4(i) = mean(n4(i:(i+window_size)));
+    result_x4(i) = mean(x4(i:(i+window_size)));
+end
+
+ bin_size=1;
+ Bbin = ceil((max(C_tail)-min(C_tail))/bin_size);
+%  figure
+ hist(C_tail,Bin)
+ [n5,x5] = hist(C_tail,Bin);
+ s5 = sum(n5);
+ 
+result_y5 =[];
+result_x5 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y5(i) = mean(n5(i:(i+window_size)));
+    result_x5(i) = mean(x5(i:(i+window_size)));
+end
+
+ bin_size=1;
+ Bbin = ceil((max(C_tail)-min(C_tail))/bin_size);
+%  figure
+ hist(C_tail,Bin)
+ [n5,x5] = hist(C_tail,Bin);
+ s5 = sum(n5);
+ 
+result_y5 =[];
+result_x5 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y5(i) = mean(n5(i:(i+window_size)));
+    result_x5(i) = mean(x5(i:(i+window_size)));
+end
+
+ bin_size=1;
+ Bbin = ceil((max(C_mid_3)-min(C_mid_3))/bin_size);
+%  figure
+ hist(C_mid_3,Bin)
+ [n6,x6] = hist(C_mid_3,Bin);
+ s6 = sum(n6);
+ 
+result_y6 =[];
+result_x6 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y6(i) = mean(n6(i:(i+window_size)));
+    result_x6(i) = mean(x6(i:(i+window_size)));
+end
+
+ bin_size=1;
+ Bbin = ceil((max(C_mid_4)-min(C_mid_4))/bin_size);
+%  figure
+ hist(C_mid_4,Bin)
+ [n7,x7] = hist(C_mid_4,Bin);
+ s7 = sum(n7);
+ 
+result_y7 =[];
+result_x7 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y7(i) = mean(n7(i:(i+window_size)));
+    result_x7(i) = mean(x7(i:(i+window_size)));
+end
+
+ bin_size=1;
+ Bbin = ceil((max(C_mid_5)-min(C_mid_5))/bin_size);
+%  figure
+ hist(C_mid_5,Bin)
+ [n8,x8] = hist(C_mid_5,Bin);
+ s8 = sum(n8);
+ 
+result_y8 =[];
+result_x8 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y8(i) = mean(n8(i:(i+window_size)));
+    result_x8(i) = mean(x8(i:(i+window_size)));
+end
+
+bin_size=1;
+ Bbin = ceil((max(C_mid_6)-min(C_mid_6))/bin_size);
+%  figure
+ hist(C_mid_6,Bin)
+ [n9,x9] = hist(C_mid_6,Bin);
+ s9 = sum(n9);
+ 
+result_y9 =[];
+result_x9 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y9(i) = mean(n9(i:(i+window_size)));
+    result_x9(i) = mean(x9(i:(i+window_size)));
+end
+
+bin_size=1;
+ Bbin = ceil((max(C_mid_7)-min(C_mid_7))/bin_size);
+%  figure
+ hist(C_mid_7,Bin)
+ [n10,x10] = hist(C_mid_7,Bin);
+ s10 = sum(n10);
+ 
+result_y10 =[];
+result_x10 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y10(i) = mean(n10(i:(i+window_size)));
+    result_x10(i) = mean(x10(i:(i+window_size)));
+end
+
+bin_size=1;
+ Bbin = ceil((max(C_mid_8)-min(C_mid_8))/bin_size);
+%  figure
+ hist(C_mid_8,Bin)
+ [n11,x11] = hist(C_mid_8,Bin);
+ s11 = sum(n11);
+ 
+result_y11 =[];
+result_x11 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y11(i) = mean(n11(i:(i+window_size)));
+    result_x11(i) = mean(x11(i:(i+window_size)));
+end
+
+bin_size=1;
+ Bbin = ceil((max(C_mid_9)-min(C_mid_9))/bin_size);
+%  figure
+ hist(C_mid_9,Bin)
+ [n12,x12] = hist(C_mid_9,Bin);
+ s12 = sum(n12);
+ 
+result_y12 =[];
+result_x12 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y12(i) = mean(n12(i:(i+window_size)));
+    result_x12(i) = mean(x12(i:(i+window_size)));
+end
+
+bin_size=1;
+ Bbin = ceil((max(C_mid_10)-min(C_mid_10))/bin_size);
+%  figure
+ hist(C_mid_10,Bin)
+ [n13,x13] = hist(C_mid_10,Bin);
+ s13 = sum(n13);
+ 
+result_y13 =[];
+result_x13 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y13(i) = mean(n13(i:(i+window_size)));
+    result_x13(i) = mean(x13(i:(i+window_size)));
+end
+
+bin_size=1;
+ Bbin = ceil((max(C_mid_11)-min(C_mid_11))/bin_size);
+%  figure
+ hist(C_mid_11,Bin)
+ [n14,x14] = hist(C_mid_11,Bin);
+ s14 = sum(n14);
+ 
+result_y14 =[];
+result_x14 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y14(i) = mean(n14(i:(i+window_size)));
+    result_x14(i) = mean(x14(i:(i+window_size)));
+end
+
+bin_size=1;
+ Bbin = ceil((max(C_mid_12)-min(C_mid_12))/bin_size);
+%  figure
+ hist(C_mid_12,Bin)
+ [n15,x15] = hist(C_mid_12,Bin);
+ s15 = sum(n15);
+ 
+result_y15 =[];
+result_x15 =[];
+window_size =5; 
+for i = 1:(Bin-window_size)
+    result_y15(i) = mean(n15(i:(i+window_size)));
+    result_x15(i) = mean(x15(i:(i+window_size)));
+end
+%%
+figure;
+%subplot('position',[0.2 0.15 0.20 0.8]);
+subplot(1,2,1)
+%p1 = plot(smooth(result_y1)/s1,result_x1)
+%p1.Color = [51 153 102]/256;
+%p1.LineWidth = 2
+%hold on 
+p2 = plot(smooth(result_y2)/s2,result_x2)
+% %p2.Color = [0 102 204]/256;
+p2.LineWidth = 2
+hold on
+p3 = plot(smooth(result_y3)/s3,result_x3)
+% %p3.Color = [255 102 51]/256;
+p3.LineWidth = 2
+p4 = plot(smooth(result_y4)/s4,result_x4)
+% %p4.Color = [0 102 204]/256;
+p4.LineWidth = 2
+hold on
+p5 = plot(smooth(result_y5)/s5,result_x5)
+% %p5.Color = [255 102 51]/256;
+p5.LineWidth = 2
+
+xlabel('Number Density','fontsize',14,'FontWeight','bold');
+
+Ax = gca
+Ax.YLim = [-80 80];
+Ax.XLim = [0.00 0.020]
+Ax.GridLineStyle = 'None'
+Ax.LineWidth = 2.0;
+Ax.TickDir = 'out';
+Ax.FontSize = 14;
+Ax.FontWeight = 'bold'
+Ax.YTick = -80:20:80;
+Ax.XTick = 0.00:0.004:0.020;
+Ax.YAxisLocation = 'right'
+
+subplot(1,2,2)
+p6 = plot(smooth(result_y6)/s6,result_x6)
+%p2.Color = [0 102 204]/256;
+p6.LineWidth = 2
+hold on
+p7 = plot(smooth(result_y7)/s7,result_x7)
+%p3.Color = [255 102 51]/256;
+p7.LineWidth = 2
+p8 = plot(smooth(result_y8)/s8,result_x8)
+%p4.Color = [0 102 204]/256;
+p8.LineWidth = 2
+hold on
+p9 = plot(smooth(result_y9)/s9,result_x9)
+%p5.Color = [255 102 51]/256;
+p9.LineWidth = 2
+p10 = plot(smooth(result_y10)/s10,result_x10)
+%p2.Color = [0 102 204]/256;
+p10.LineWidth = 2
+hold on
+p11 = plot(smooth(result_y11)/s11,result_x11)
+%p3.Color = [255 102 51]/256;
+p11.LineWidth = 2
+p12 = plot(smooth(result_y12)/s12,result_x12)
+%p4.Color = [0 102 204]/256;
+p12.LineWidth = 2
+hold on
+p13 = plot(smooth(result_y13)/s13,result_x13)
+%p5.Color = [255 102 51]/256;
+p13.LineWidth = 2
+p14 = plot(smooth(result_y14)/s14,result_x14)
+%p4.Color = [0 102 204]/256;
+p14.LineWidth = 2
+hold on
+p15 = plot(smooth(result_y15)/s15,result_x15)
+%p5.Color = [255 102 51]/256;
+p15.LineWidth = 2
+
+ylabel('Distance (A)','fontsize',14,'FontWeight','bold'); xlabel('Number Density','fontsize',14,'FontWeight','bold');
+
+Ax = gca
+Ax.YLim = [-80 80];
+Ax.XLim = [0.00 0.020]
+Ax.GridLineStyle = 'None'
+Ax.LineWidth = 2.0;
+Ax.TickDir = 'out';
+Ax.FontSize = 14;
+Ax.FontWeight = 'bold'
+Ax.YTick = -80:20:80;
+Ax.XTick = 0.00:0.004:0.020;
+Ax.YAxisLocation = 'right'
