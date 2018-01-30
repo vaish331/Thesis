@@ -1,1 +1,9 @@
 
+This is a detail analysis of the ReaxFF simulations performed for a single boron nitride nanosheet immersed in water. 
+The hexagonal boron nitride exists in two different configurations - zigzag and armchair.
+Simulations were performed on BN sheets of hexagonal shape with zig-zag terminated edges (alternating B and N terminated edges) 
+as well as with the arm-chair edge  configuration (edges with alternating B and N atoms) with the former containing a total of 150 
+boron and nitrogen atoms and the latter with 114 atoms, but both having the same number  (30) of  edge atoms.
+The BN sheets were immersed in a simulation cell  containing 3840 water molecules.
+ReaxFF simulations were carried out for 50 ps using a NPT ensemble (1 atm, 300 K) with a time step of 0.5 fs. 
+The sheet was held rigid throughout the simulation.
