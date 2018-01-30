@@ -7,3 +7,185 @@ boron and nitrogen atoms and the latter with 114 atoms, but both having the same
 The BN sheets were immersed in a simulation cell  containing 3840 water molecules.
 ReaxFF simulations were carried out for 50 ps using a NPT ensemble (1 atm, 300 K) with a time step of 0.5 fs. 
 The sheet was held rigid throughout the simulation.
+
+%fid = fopen('D:\vaishali-data\BN_Water\ReaxFF\reaxc\50edge\complete.txt');
+%fid = fopen('D:\vaishali-data\BN_Water\ReaxFF\reax_rigid\50edge\species.50edge_1V');
+%fid = fopen('F:\ReaxFF_Rigid_new\species.50edge_1P');
+tic
+%fid = fopen('F:\ReaxFF_Rigid_new\species.edge_1P');
+fid = fopen('/media/sv_lab/My Passport1/armchair/Data_Analysis/species.arm_1P');
+%fid = fopen('/home/sv_lab/binary_repos/LAMMPS_MARCH_2017/lammps-10Mar17/vaishali/Validation/BN_Water/rigid_OH/species.1P');
+%fid = fopen('/media/sv_lab/My Passport/ReaxFF_Rigid_new/species.50edge_1P');
+%fid = fopen('~/binary_repos/LAMMPS_MARCH_2017/lammps-10Mar17/vaishali/Validation/Final/BN_Water/species.1');
+%fid = fopen('D:\vaishali-data\BN_Water\ReaxFF\reaxc\hex\bonds.hex_7');
+% N = 112612;
+%N = 320108;
+%N = 40000
+N = 2000; % The species data was 
+k = 0;
+Data = {};
+while  ~feof( fid )
+        k = k+1;
+        %header = textscan( fid,'%s%*[^\n]',2,'Delimiter', '\t');
+
+        x = textscan( fid,'%s%*[^\n]',N, 'Delimiter', ',');
+
+                for i = 1:N
+                    
+                y = strsplit(char(x{1}(i)), ':');
+                                 
+                Data{i,k}= y;
+                end
+end 
+fclose( fid );
+%%
+clear fid header k x i
+%%
+
+
+    n = max(cellfun(@(x)size(x,2),Data(:,1)))
+    for i=1:N
+        x = Data{i};
+        for j=1:(n-numel(x))
+            x = [x,['0']];
+        end
+        DataZ{i,1}=x;
+    end
+    data = cat(1,DataZ{:});
+    
+    
+    
+ %%
+ TS={};
+ k=1;
+ for i=1:N/2
+     namerow = 2*i-1;
+     valuerow = 2*i;
+     for j=1:str2double(char(data(valuerow,3)))
+         TS{k} = char(data(namerow,3+j));
+         k=k+1;
+     end 
+ end
+ 
+ TS=unique(TS);
+ %%
+k=1;
+ for i=1:N/2
+     namerow = 2*i-1;
+     valuerow = 2*i;
+     for j = 1:size(TS,2)
+         mol = char(TS(1,j));
+         TS{i+1,j} = 0;
+        for k=1:str2double(char(data(valuerow,3)))
+            if strcmp( mol,char(data(namerow,3+k)))
+                TS{i+1,j} = str2double(char(data(valuerow,3+k)));
+            end
+        end
+     end
+ end     
+     
+%%
+mat = cell2mat(TS(2:end,:));
+
+%%
+grp1 = { 'H2O', 'H4O2','H6O3','H8O4','H14O7','H12O6','H10O5'};
+grp2 = {'H','H3O','H5O2','H7O3','H9O4','H13O6','H11O5'};
+grp3 = {'HO','H9O5','H7O4','H5O3','H3O2','H15O8','H13O7','H11O6'}
+grp4 = {'O','H9O6','H8O5','H6O4','H5O4','H4O3','H3O3','H2O2','H12O7','H10O6','H10O4'};
+grp5 = {'H2','H4O','H6O2','H8O3','H10O4'};
+
+grp1_val =[];
+grp2_val =[];
+grp3_val =[];
+grp4_val =[];
+grp5_val =[];
+
+k=1;
+g1=1;
+g2=1;
+g3=1;
+g4=1;
+g5=1;
+match=0;
+for i=1:size(TS,2)
+    for j=1:numel(grp1)
+        if strcmp(TS(1,i), grp1{j})  
+            grp1_val(:,g1) = mat(:,i);
+            match =1
+            grp1{j}
+            g1 =g1+1;
+        end
+    end
+    for j=1:numel(grp2)
+        if strcmp(TS(1,i), grp2{j})  
+            grp2_val(:,g2) = mat(:,i);
+            match =2
+            grp2{j}
+            g2 =g2+1;
+        end
+    end
+    for j=1:numel(grp3)
+        if strcmp(TS(1,i), grp3{j})  
+            grp3_val(:,g3) = mat(:,i);
+            match =3
+            grp3{j}
+            g3 =g3+1;
+        end
+    end
+    for j=1:numel(grp4)
+        if strcmp(TS(1,i), grp4{j})  
+            grp4_val(:,g4) = mat(:,i);
+            match =4
+            grp4{j}
+            g4 =g4+1;
+        end
+    end
+    for j=1:numel(grp5)
+        if strcmp(TS(1,i), grp5{j})  
+            grp5_val(:,g5) = mat(:,i);
+            match =5
+            grp5{j}
+            g5 =g5+1;
+        end
+    end
+
+    match =0;
+end
+%%
+
+ figure
+ 
+ g3_sum  = sum(grp3_val,2);
+ plot(g3_sum(1:end) )
+ title('OH')
+ 
+ figure
+ g1_sum  = sum(grp1_val,2);
+ plot(g1_sum(1:end) )
+ title('H2O')
+
+ figure
+ g2_sum  = sum(grp2_val,2);
+ plot(g2_sum(1:end) )
+ title('H')
+ 
+ figure
+ g4_sum  = sum(grp4_val,2);
+ plot(g4_sum(1:end) )
+ title('O')
+
+ figure
+ g5_sum  = sum(grp5_val,2);
+ plot(g5_sum(1:end) )
+ title('H2')
+ 
+ toc
+%%
+
+
+
+save total_OH g3_sum
+save total_water g1_sum
+save total_H g2_sum
+save total_O g4_sum
+save total_H2 g5_sum
