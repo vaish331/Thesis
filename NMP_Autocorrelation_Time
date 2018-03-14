@@ -1,1 +1,208 @@
 
+lower_threshold = 0;
+upper_threshold = 5;
+Selected_Mol    = [];
+j=1;
+
+
+frame_number =101;
+number_of_mol =2880;
+for i = ( 1 : number_of_mol )
+   %if( lower_threshold < result_angle(i,4,frame_number) && result_angle(i,4,frame_number) < upper_threshold )
+   if( lower_threshold < result_angle(i,4,last_frame_num) && result_angle(i,4,last_frame_num) < upper_threshold && x_sheet_min < result_angle(i,6,frame_number) && result_angle(i,6,frame_number) < x_sheet_max && y_sheet_min < result_angle(i,5,frame_number) && result_angle(i,5,frame_number) < y_sheet_max)
+       Selected_Mol(j,:,:) = result_angle(number_of_mol,:,:);
+       j=j+1;
+   end
+%    if mod(i,1000)==0
+%        i
+%    end
+end
+%%
+Avg_Angle=[];
+Avg_Angle = mean(Selected_Mol);
+Avg_Angle = mean(Selected_Mol);
+Avg_Angle =reshape(Avg_Angle(1,3,:),[1,last_frame_num]);
+%Avg_Angle = (3*((cosd(Avg_Angle)).^2))-1;
+%% plot of ACF
+% figure
+% myautocorr(Avg_Angle,90)
+figure
+[ACF, Lags, Bounds] = myautocorr(Avg_Angle,90);
+frame_time  = 1000;%e-15
+x = Lags' * frame_time;
+y = ACF';
+last = find(y<0.01,1,'first')
+x = x(1:last);
+y = y(1:last);
+f = fit(x,y,'exp1')
+plot(f,x,y)
+
+
+logy=log(y);
+
+decay_time = -1/f.b
+% figure
+% 
+% f=fit(x,logy,'poly1')
+% plot(f,x,logy)
+%% plot of angle time series
+% figure
+% plot(Avg_Angle)
+
+%% plot from origin
+% ACF is a 2D matrix with ACF(:,1) = steps in self_orientation.m 
+% and ACF(:,2) is the decay time calculted using AutoCorr_orientation
+% fit_1 is the fit obtained using exponential decay of the ACF plot for +z
+% and fit_2 is the fit for -z
+
+%convert to picosec vy dividing ACF(:,2),fit_1(:,2) and fit_2(:,2) by 1000
+figure
+subplot('position',[0.13 0.5 0.8 0.3]);
+Oplot = scatter(ACF(:,1),ACF(:,2)/1000,'k','filled')
+xlabel('z[$\AA ]$ ','interpreter','LaTex','fontsize',14,'FontWeight','bold'); ylabel('ACF decay time (z) [ps]','fontsize',14,'FontWeight','bold');
+% Oplot.LineWidth = 1.5;
+% Oplot.Color = 'k';
+ax = gca;
+set(gca,'Xdir','reverse')
+ax.LineWidth = 1.5;
+ax.TickDir = 'out';
+ax.FontSize = 14;
+ax.FontWeight = 'bold';
+ax.XLim = [-60 60];
+ax.YLim = [0 20];
+hold on
+Rplot = plot(fit_1(:,1),fit_1(:,2)/1000)
+Rplot.LineWidth = 1.5;
+Rplot.Color = 'r';
+hold on
+Pplot = plot(fit_2(:,1),fit_2(:,2)/1000)
+Pplot.LineWidth = 1.5;
+Pplot.Color = 'r';
+box on
+
+%%
+figure
+subplot('position',[0.2 0.15 0.20 0.8]);
+% subplot('position',[0.13 0.87 0.7 0.12]);
+Oplot = scatter(ACF(:,2)/1000,ACF(:,1),'k','filled')
+ylabel('z[$\AA ]$ ','interpreter','LaTex','fontsize',14,'FontWeight','bold'); xlabel('ACF decay time (z) [ps]','fontsize',14,'FontWeight','bold');
+% Oplot.LineWidth = 1.5;
+% Oplot.Color = 'k';
+ax = gca;
+ax.LineWidth = 1.5;
+ax.TickDir = 'out';
+ax.FontSize = 14;
+ax.FontWeight = 'bold';
+ax.YLim = [-60 60];
+ax.XLim = [0 20];
+hold on
+Rplot = plot(fit_1(:,2)/1000,fit_1(:,1))
+Rplot.LineWidth = 1.5;
+Rplot.Color = 'r';
+hold on
+Pplot = plot(fit_2(:,2)/1000,fit_2(:,1))
+Pplot.LineWidth = 1.5;
+Pplot.Color = 'r';
+box on
+
+%%
+% Combined plot of ACF near sheet, away from sheet and for pure solvent
+% define m = x and x = lags'*frame time. but make sure now the frame time
+% is in ps as the above section used frame time in fs.
+% n = y
+% k is same as f from above section
+% last is already defined
+% Define the following every time after the above section is run and store
+% these values 
+% near sheet : Lags = L_1 ACF = AC_1 last_1 lower thres = 0 and ut = 5
+% away Sheet : Lags = L_2 ACF = AC_2 last_2 lower thres = -30 and ut = -35
+% away Sheet : Lags = L_2 ACF = AC_2 last_2 lower thres = -60 and ut = -55
+% pure Solvt : Lags = L_3 ACF = AC_3 last_3 lower thres = -50 and ut = -45
+% 4 is just an extra
+
+figure
+m_1 = L_1' * frame_time/1000;
+n_1 = AC_1';
+m_1 = m_1(1:last_1);
+n_1 = n_1(1:last_1);
+k_1 = fit(m_1,n_1,'exp1')
+plot_1 = plot(k_1,m_1,n_1)
+ 
+hold on
+m_2 = L_2' * frame_time/1000;
+n_2 = AC_2';
+m_2 = m_2(1:last_2);
+n_2 = n_2(1:last_2);
+k_2 = fit(m_2,n_2,'exp1')
+plot_2 = plot(k_2,m_2,n_2)
+
+hold on
+m_3 = L_3' * frame_time/1000;
+n_3 = AC_3';
+m_3 = m_3(1:last_3);
+n_3 = n_3(1:last_3);
+k_3 = fit(m_3,n_3,'exp1')
+plot_3 = plot(k_3,m_3,n_3)
+
+hold on
+m_4 = L_4' * frame_time/1000;
+n_4 = AC_4';
+m_4 = m_4(1:last_4);
+n_4 = n_4(1:last_4);
+k_4 = fit(m_4,n_4,'exp1')
+plot_4 = plot(k_4,m_4,n_4)
+
+
+plot_1(1).MarkerSize = 20
+plot_1(1).Color = 'b'
+plot_1(2).LineWidth = 4
+plot_1(2).Color = 'b'
+
+plot_2(1).MarkerSize = 20
+plot_2(1).Color = 'r'
+plot_2(2).LineWidth = 4
+plot_2(2).Color = 'r'
+
+plot_3(1).MarkerSize = 20
+plot_3(1).Color = 'g'
+plot_3(2).LineWidth = 4
+plot_3(2).Color = 'g'
+
+plot_4(1).MarkerSize = 20
+plot_4(1).Color = 'k'
+plot_4(2).LineWidth = 4
+plot_4(2).Color = 'k'
+
+ax = gca
+ax.YLabel.String = 'C_{\theta\theta}(t)';
+ax.XLabel.String = 't (ps)';
+ax.YLabel.FontSize = 20;
+ax.XLabel.FontSize = 20;
+ax.XLabel.FontWeight = 'bold';
+ax.YLabel.FontWeight = 'bold';
+ax.LineWidth = 2
+ax.XColor = 'k'
+ax.YColor = 'k'
+ax.TickDir = 'out'
+ax.FontSize = 20
+ax.FontWeight = 'bold';
+ax.YTick = 0:0.2:1;
+ax.XLim = [0 40];
+ax.YLim = [0 1];
+axis square
+ang = char(197)
+L=legend([plot_1(2) plot_2(2) plot_3(2) plot_4(2)],sprintf('%1.1f%c from the graphene sheet',5,ang),sprintf('%1.1f%c from the graphene sheet',25,ang),sprintf('%1.1f%c from the graphene sheet',55,ang),'bulk NMP solvent','s')
+L.LineWidth = 2;
+L.FontSize = 12
+dim = [.2 .5 .3 .3];
+str = 't_{\theta\theta}=13.0934';
+annotation('textbox',dim,'String',str,'FitBoxToText','on','LineStyle','none','FontSize',12,'FontWeight','bold','Color','b');
+dim = [.2 .4 .3 .3];
+str = 't_{\theta\theta}=4.7072';
+annotation('textbox',dim,'String',str,'FitBoxToText','on','LineStyle','none','FontSize',12,'FontWeight','bold','Color','r');
+dim = [.2 .3 .3 .3];
+str = 't_{\theta\theta}=3.7523';
+annotation('textbox',dim,'String',str,'FitBoxToText','on','LineStyle','none','FontSize',12,'FontWeight','bold','Color','g');
+dim = [.1 .3 .3 .3];
+str = 't_{\theta\theta}=3.7707';
+annotation('textbox',dim,'String',str,'FitBoxToText','on','LineStyle','none','FontSize',12,'FontWeight','bold','Color','k');
