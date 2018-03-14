@@ -1,1 +1,279 @@
 
+last_frame_num = size(Data);
+last_frame_num = last_frame_num(3);
+result_angle = [];
+for frame_num = (1:last_frame_num)
+        data = Data(:,:,frame_num);
+        dim = size(data);
+        dipole =[];
+        j=1;
+        l=1;
+        dim(1);
+        % For every 16 atoms a molecular id is set
+        for i = (1:dim(1))
+            data(i,5) = floor((i-1)/16)+1;
+        end
+        %% dipole CO
+        %data [atom id, x, y, z, Molecule id]
+        %dipole [atom id, x, y, z, Molecule id] only for "2" & "6" atom id
+        sheet =[];
+        mol = [];
+        C = [];
+        N = [];
+        C2 = [];
+        O = [];
+        for i = 1:dim(1)
+            if data(i) == 3
+            sheet(i,:) = data(i,:);
+            end
+        end
+        
+         sheet_dim = size(sheet);
+         mol = data(sheet_dim(1)+1:end,:);
+         mol_dim = size(mol);
+         number_of_mol = mol_dim(1)/16;
+        for i = (1:number_of_mol)
+            N(j,:) = mol( 16*i-14,:); %atom id =5
+            C2(j,:) = mol( 16*i-13 ,:); %atom id =2
+            O(j,:) = mol( 16*i-10 ,:); %atom id =6
+            C(j,:) = mol( 16*i-9 ,:); %atom id =1  
+            j = j+1;
+        end
+        %% Dipole NC
+%         num_mol = max(data(:,5));
+%         i =1;
+%         j=1;
+%         for n = (0:num_mol-1)
+%            if data(5+16*n,1)==5 || data(7+16*n,1)==7
+%                 dipole(j,:) = data(5+16*n,:);
+%                 dipole(j+1,:) = data(7+16*n,:);
+%                 j =j+2;
+%            end
+%      
+%         end
+       
+        %% sheet
+        % sheet [atom id, x, y, z, Molecule id] 
+        % for all atom id "3" its molecule id is set as -1
+        
+        sheet(:,5) = -1;
+        sheet_avg = mean(sheet);
+        z_sheet_avg = sheet_avg(4);
+        x_sheet_max = max(sheet(:,2));
+        x_sheet_min = min(sheet(:,2));
+        y_sheet_max = max(sheet(:,3));
+        y_sheet_min = min(sheet(:,3));
+
+        % takin midpoints of sheet to calculate normal of sheet
+        sheet_size = size(sheet);
+        index = floor(sheet_size(1)/2);
+        sheet_A1 = sheet( index , 2:4 );
+        sheet_A2 = sheet( index+1 , 2:4 );
+        sheet_A3 = sheet( index+2 , 2:4 );
+        % defining a normal perpendicular to sheet
+         normal = cross(sheet_A3-sheet_A1,sheet_A3-sheet_A2);
+               
+%         dipole_size = size(dipole);
+%         number_of_mol = dipole_size(1)/3;
+%% COM
+com = [];
+mol_mass = [];
+type = [];
+Mol = [];
+Mol_new = [];
+sum_mol_mass = [];
+sum_Mol_new = [];
+
+ type = mol(1:16,1);
+ for i = 1:16
+     if type(i)==1 || type(i)==2
+         mol_mass(i,1) = 12.00;
+         else if type(i)==4
+             mol_mass(i,1) = 1.008;
+             else if type(i)==5
+                     mol_mass(i,1)= 14.00;
+                 else
+                     mol_mass(i,1) = 16.00;
+                 end
+             end
+     end
+ end
+         
+ for i = 1:3
+ Mol(:,:,i) = reshape(mol(:,i+1),[16,(mol_dim(1)/16)]);
+ end
+ 
+ for i = 1:3
+   for j = 1:16
+       Mol_new(j,:,i) = mol_mass(j)*Mol(j,:,i);
+   end
+ end
+         
+ sum_mol_mass = sum(mol_mass);
+ sum_Mol_new = sum(Mol_new);
+%  center_of_mass = sum_Mol_new/sum_mol_mass;
+ com = sum_Mol_new/sum_mol_mass;
+ 
+        %% angle
+        % angle [ Molecule id, CosTheta, ThetaInDegrees, distance_from_sheet ]
+        angle = [];
+        j=1;
+        for i = ( 1 : number_of_mol )
+%             a1 = dipole( 3*i-2,:); %atom id =5
+%             a2 = dipole( 3*i-1 ,:); %atom id =2
+%             a3 = dipole( 3*i ,:); %atom id =6
+            if C(i,5) == N(i,5)  || O(i,5) == C2(i,5)
+                vect_1 = C(i,2:4)-N(i,2:4);
+                vect_2 = O(i,2:4)-C2(i,2:4);
+                vect = cross(vect_1,vect_2);
+                CosTheta = dot(vect,normal)/(norm(vect)*norm(normal));
+                ThetaInDegrees = acosd(CosTheta);
+                CorrTheta = ThetaInDegrees;
+                distance_from_sheet = com(1,i,3) -z_sheet_avg;
+                x_avg = com(1,i,1);
+                y_avg = com(1,i,2);
+                angle(j,:) = [ a1(5), CosTheta^2, CorrTheta, distance_from_sheet,y_avg,x_avg];
+            end
+            j=j+1;
+        end
+        if size(result_angle) ==0
+               result_angle = angle;
+            else
+               result_angle=cat(3,result_angle,angle);
+        end
+        if mod(frame_num,1)==0
+            frame_num
+        end
+end
+%%
+% result_angle(:,3,:) = (cosd(result_angle(:,3,:))).^2;
+
+%% Plot
+
+   maxi=max(result_angle(:,4,1));
+   mini=min(result_angle(:,4,1));
+        % Result : take all value lies between threshold distance.
+   plot_result = [];
+   step_size = 2;
+  % mini=-step_size;
+   steps = (-60:step_size:60);
+   %steps = ( mini:step_size:maxi);
+   num_steps = numel(steps);
+   k =1; 
+   
+   for iter = steps    
+        lower_threshold = iter;
+        upper_threshold = iter+step_size;
+        result = [];
+        j=1;
+        dim =size(result_angle);
+        for frame_number = (1:dim(3))
+            for i = ( 1 : number_of_mol )
+               %if( lower_threshold < result_angle(i,4,frame_number) && result_angle(i,4,frame_number) < upper_threshold )
+               if( lower_threshold < result_angle(i,4,frame_number) && result_angle(i,4,frame_number) < upper_threshold && x_sheet_min < result_angle(i,6,frame_number) && result_angle(i,6,frame_number) < x_sheet_max && y_sheet_min < result_angle(i,5,frame_number) && result_angle(i,5,frame_number) < y_sheet_max )            
+                   result(j,:) = result_angle(i,:,frame_number);
+                   j=j+1;
+                                      
+               end
+            end
+            
+        end
+        j
+%         plot_result(k,1) = (lower_threshold+upper_threshold)/2;
+        if iter<0
+        plot_result(k,1) = lower_threshold;
+        else
+        plot_result(k,1) = upper_threshold;
+        end
+        %plot_result(k,2) = mean(result(:,3));
+        plot_result(k,2) = ((3*mean(result(:,2)))-1)/2;
+        
+        k=k+1
+      
+   end  
+ %%   
+figure   
+Oplot = plot(plot_result(:,1),(plot_result(:,2)),'-o')
+xlabel('z[$\AA ]$ ','interpreter','LaTex','fontsize',14,'FontWeight','bold'); ylabel('Angle with respect to sheet normal','fontsize',14,'FontWeight','bold');
+Oplot.LineWidth = 1.5;
+Oplot.Color = 'k';
+Oax = gca;
+Oax.LineWidth = 1.5;
+Oax.TickDir = 'out';
+Oax.FontSize = 14;
+Oax.FontWeight = 'bold';
+Oax.XLim = [-60 60];
+
+%%
+interp = [];
+interp(:,1) = -60:0.1:60;
+figure
+interp(:,2) = interp1(plot_result(:,1),(plot_result(:,2)),interp(:,1),'pchip');
+plot(interp(:,1),interp(:,2))
+
+
+
+%% Sorting data with respect to threshold distance
+%Sort_Result = sortrows(result,4);
+% X and Y axis in histogram Plot
+%Hist_Plot = Sort_Result(:,3:4);
+%hist3(Hist_Plot,[50 50])
+%set(get(gca,'child'),'FaceColor','interp','CDataMode','auto');
+
+
+
+
+% XX(:,1) = reshape(result_angle(:,4,:),[number_of_mol*last_frame_num,1]);
+% XX(:,2) = reshape(result_angle(:,3,:),[number_of_mol*last_frame_num,1]);
+% XX = mean(result_angle,3);
+% q = 1;
+% YY = [];
+% for i = 1:number_of_mol
+%     if (x_sheet_min < XX(i,6) && XX(i,6) < x_sheet_max && y_sheet_min < XX(i,5) && XX(i,5) < y_sheet_max )  
+%         YY(q,:) = XX(i,3:4);
+%         q = q+1;
+%     end
+% end
+% YY_size = size(YY);
+% s_size = 10;
+% s = (-60:s_size:55);
+% p = 1;
+% for i = s    
+%         lt = i;
+%         ut = i+s_size;
+%         ZZ = [];
+%         k = 1;
+%         for j = 1:10795%YY_size(1)
+%             if (lt < YY(j,2) && YY(j,2) < ut)
+%                 ZZ(k,:) = YY(j,:);
+%                 k = k+1;
+%             end
+%         end
+%         
+%         if i<0
+%         PP(p,1) = lt;
+%         else
+%         PP(p,1) = ut;
+%         end
+%         PP(p,2) = mean(ZZ(:,1));    
+%         p = p+1
+% end
+%                 
+%         
+% % figure
+% % plot(YY(:,2),YY(:,1),'*')
+% figure
+% plot(PP(:,1),PP(:,2),'*')
+
+
+
+
+
+
+
+    
+    
+ 
+ 
+ 
+
