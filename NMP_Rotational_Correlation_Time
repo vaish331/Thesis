@@ -1,1 +1,267 @@
 
+dim_Data = size(Data);
+last_frame_num = dim_Data(3);
+
+
+sheet = Data(find(Data(:,1,1)==3),:,:);
+mol = Data(find(Data(:,1,1)~=3),:,:);
+
+sheet_avg = mean(sheet);
+z_sheet_avg = sheet_avg(4);
+x_sheet_max = max(sheet(:,2));
+x_sheet_min = min(sheet(:,2));
+y_sheet_max = max(sheet(:,3));
+y_sheet_min = min(sheet(:,3));
+
+mol(:,4,:) = mol(:,4,:) - z_sheet_avg;
+
+for frame_num = (1:last_frame_num)        
+        dim_sheet = size(sheet);
+        dim_mol = size(mol);
+        num_mol = dim_mol(1)/16;
+        
+        mol_mass = [];
+        type = mol(1:16,1);
+         for i = 1:16
+             if type(i)==1 || type(i)==2
+                 mol_mass(i,1) = 12.00;
+                 else if type(i)==4
+                     mol_mass(i,1) = 1.008;
+                     else if type(i)==5
+                             mol_mass(i,1)= 14.00;
+                         else
+                             mol_mass(i,1) = 16.00;
+                         end
+                     end
+                     
+             end
+         end
+         
+         for i = 1:3
+         Mol(:,:,i) = reshape(mol(:,i+1),[16,(dim_mol(1)/16)]);
+         end
+         
+         a=1;
+         b=1;
+         Mol_new = [];
+         
+         for i = 1:3
+           for j = 1:16
+               Mol_new(j,:,i) = mol_mass(j)*Mol(j,:,i);
+           end
+         end
+         
+         sum_mol_mass = sum(mol_mass);
+         sum_Mol_new = sum(Mol_new);
+         center_of_mass(frame_num,:,:) = sum_Mol_new/sum_mol_mass;
+         
+             
+         if mod(frame_num,1)==0
+            frame_num;
+         end
+end
+
+for i = 1:last_frame_num
+    com(:,:,i) = reshape(center_of_mass(i,:,:),[16800,3]);
+end
+
+clear a b i j Mol mol_mass Mol_new sum_mol_mass sum_Mol_new type center_of_mass
+
+lower_limit = 0;
+upper_limit = 5;
+
+
+%%
+lt = lower_limit;
+ut = upper_limit;
+
+thres_x = find(com(:,1,1)>=(x_sheet_min)& com(:,1,1)<(x_sheet_max));
+thres_y = find(com(:,2,1)>=(y_sheet_min)& com(:,2,1)<(y_sheet_max));
+thres_z = find(com(:,3,1)>=(lt)& com(:,3,1)<(ut));
+thres = intersect(intersect(thres_x,thres_y),thres_z);
+
+
+figure
+scatter3(sheet(:,2,1),sheet(:,3,1),sheet(:,4,1),[],'r')
+hold on
+for i = 1:numel(thres)
+    scatter3(mol(16*thres(i)-15:16*thres(i),2,1),mol(16*thres(i)-15:16*thres(i),3,1),mol(16*thres(i)-15:16*thres(i),4,1),[],'c')
+    hold on
+end
+
+j= 1;
+for i = 1:numel(thres)
+    if any(mol(16*thres(i)-15:16*thres(i),2,1)>=(x_sheet_min)& mol(16*thres(i)-15:16*thres(i),2,1)<(x_sheet_max))
+        thres_new(j,1) = thres(i);
+        j = j+1;
+    end
+end
+
+thres =[];
+for i = 1:numel(thres_new)
+    scatter3(mol(16*thres_new(i)-15:16*thres_new(i),2,1),mol(16*thres_new(i)-15:16*thres_new(i),3,1),mol(16*thres_new(i)-15:16*thres_new(i),4,1),[],'r')
+    hold on
+end
+hold on
+
+j= 1;
+for i = 1:numel(thres_new)
+    if any(mol(16*thres_new(i)-15:16*thres_new(i),3,1)>=(y_sheet_min)& mol(16*thres_new(i)-15:16*thres_new(i),3,1)<(y_sheet_max))
+        thres(j,1) = thres_new(i);
+        j = j+1;
+    end
+end
+thres_new =[];
+
+for i = 1:numel(thres)
+    scatter3(mol(16*thres(i)-15:16*thres(i),2,1),mol(16*thres(i)-15:16*thres(i),3,1),mol(16*thres(i)-15:16*thres(i),4,1),[],'g')
+    hold on
+end
+hold on
+
+j= 1;
+for i = 1:numel(thres)
+    if any(mol(16*thres(i)-15:16*thres(i),4,1)>=(lt)& mol(16*thres(i)-15:16*thres(i),4,1)<(ut))
+        thres_new(j,1) = thres(i);
+        j = j+1;
+    end
+end
+
+for i = 1:numel(thres_new)
+    scatter3(mol(16*thres_new(i)-15:16*thres_new(i),2,1),mol(16*thres_new(i)-15:16*thres_new(i),3,1),mol(16*thres_new(i)-15:16*thres_new(i),4,1),[],'b')
+    hold on
+end
+
+thres = [];
+thres = thres_new;
+
+clear x_sheet_max x_sheet_min y_sheet_max y_sheet_min z_sheet_avg com lower_limit lt sheet_avg thres_new thres_x thres_y thres_z upper_limit ut
+        
+%% test
+
+figure
+% scatter3(com(find(com(:,3,1)>=(lt+0)& com(:,3,1)<(lt+5)),1,1),com(find(com(:,3,1)>=(lt+0)& com(:,3,1)<(lt+5)),2,1),com(find(com(:,3,1)>=(lt+0)& com(:,3,1)<(lt+5)),3,1))
+% hold on
+scatter3(sheet(:,2,1),sheet(:,3,1),sheet(:,4,1),[],'r')
+hold on
+%scatter3(com(thres,1,1),com(thres,2,1),com(thres,3,1),[],'g','filled')
+% text(com(234,1,1),com(234,2,1),num2str(234))
+hold on
+for i = 1:numel(thres)
+    scatter3(mol(16*thres(i)-15:16*thres(i),2,1),mol(16*thres(i)-15:16*thres(i),3,1),mol(16*thres(i)-15:16*thres(i),4,1))
+    hold on
+end
+%scatter3(mol(16*605-15:16*605,2,1),mol(16*605-15:16*605,3,1),mol(16*605-15:16*605,4,1),[],'g')
+%%
+tic 
+tau = [];
+for a = 1:3
+    if a == 1
+        normal = [1,0,0];
+    else if a == 2
+            normal = [0,1,0];
+        else if a == 3
+                normal = [0,0,1];
+            end
+        end
+    end
+    
+NR_radius_new = [];
+NR_thetha_new = [];
+Mol_sel = [];
+vect = [];
+CosTheta = [];
+ThetaInDegrees = [];
+for s = 1:numel(thres)
+for k = 1:last_frame_num
+    for i = 1:3
+        Mol(:,:,i) = reshape(mol(:,i+1,k),[16,(dim_mol(1)/16)]);
+    end
+
+    Mol_sel = reshape(Mol(8:16,thres(s),:),[9,3]);
+    
+     for j = 1
+         for p = 1:9;
+             if j~=p
+                
+                NR_radius_new(p,k,s) = sqrt(((Mol_sel(p,1)-Mol_sel(j,1))^2)+((Mol_sel(p,2)-Mol_sel(j,2))^2) +((Mol_sel(p,3)-Mol_sel(j,3))^2));
+                vect = Mol_sel(p,1:3)-Mol_sel(j,1:3);
+                %vect = reshape(vect,[1,3]);
+                CosTheta = dot(vect,normal)/(norm(vect)*norm(normal));
+                ThetaInDegrees = acosd(round(CosTheta,2));
+                NR_thetha_new(p,k,s) = ThetaInDegrees;
+             end
+         end
+    end  
+
+
+end
+end
+
+% NR_radius_new(all(NR_radius_new==0,2),:)=[];
+% NR_thetha_new(all(NR_thetha_new==0,2),:)=[];
+
+
+    NR_radius_final = [];
+    NR_thetha_final = [];
+    NR_radius_final  = mean(NR_radius_new,3); 
+    NR_thetha_final  = mean(NR_thetha_new,3);
+
+    NR_radius_final = NR_radius_final(2:end,:);
+    NR_thetha_final = NR_thetha_final(2:end,:);
+    GR_R = [];
+    GR_R = (3*(cosd(NR_thetha_final).^2)-1)./(NR_radius_final.^3);
+    for n = 1:8
+        [ACF, Lags, Bounds] = myautocorr(GR_R(n,:),270);
+        frame_time  = 10;%e-12
+        x = Lags' * frame_time;
+        y(:,n) = ACF';
+    end
+    
+    y = mean(y,2);
+    Gy_acf(:,a) = y;
+    Gx_acf(:,a) = x;
+
+    
+    xl = [];
+    yl = [];
+    last = find(y<0.01,1,'first');
+    xl = x(1:last);
+    yl = y(1:last);
+    figure
+    scatter(x,y);
+%     if numel(yl)>3
+%         f = fit(xl,yl,'exp1');
+%     else
+%         f = fit(x,y,'exp1');
+%     end
+%     ft = fittype('a*exp(b*x)');
+%     f = fit(xl,yl,ft);
+    f = fit(xl,yl,'exp1');
+    figure
+    plot(f,xl,yl);
+    decay_time = -1/f.b
+%     if decay_time>20
+%         m
+%         s
+%         a
+%         figure
+%         plot(f,xl,yl);
+%     end
+    tau(a) = decay_time
+
+
+
+
+end
+
+toc
+
+clear ACF Bounds CosTheta decay_time f frame_time GR_R i j k Lags last Mol Mol_sel n normal NR_radius_final NR_radius_new NR_thetha_final NR_thetha_new p s ThethaInDegrees vect  
+%%
+
+% Tc_X =  mean(mean(tau(:,find(all(tau(:,:,1)>0)),1),1),2);
+% Tc_Y =  mean(mean(tau(:,find(all(tau(:,:,2)>0)),2),1),2);
+% Tc_Z =  mean(mean(tau(:,find(all(tau(:,:,3)>0)),3),1),2);
+% 
+% Tc_G = [Tc_X,Tc_Y,Tc_Z]
