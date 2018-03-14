@@ -1,1 +1,161 @@
 
+dim = size(Data);
+if numel(dim) < 3
+    last_frame_num = 1;
+else
+    last_frame_num = dim(3);
+end
+l = dim(1);
+Mol = [];
+center_of_mass = [];
+mol =[];
+sheet = []
+for frame_num = (1:last_frame_num)
+        data = Data(:,:,frame_num);
+        dim = size(data);
+        j=1;
+        
+        % For every 16 atoms a molecular id is set
+%         for i = (1:dim(1))
+%             data(i,5) = floor((i-1)/16)+1;
+%         end
+        
+        for i = 1:dim(1)
+            if data(i) == 3
+            sheet(i,:) = data(i,:);
+            end
+        end
+        
+         sheet_dim = size(sheet);
+         mol = data(sheet_dim(1)+1:end,:);
+         mol_dim = size(mol);
+%          Mol = [];
+%          mol_mass = [];
+%          type = mol(1:16,1);
+%          for i = 1:16
+%              if type(i)==1 || type(i)==2
+%                  mol_mass(i,1) = 12.00;
+%                  else if type(i)==4
+%                      mol_mass(i,1) = 1.008;
+%                      else if type(i)==5
+%                              mol_mass(i,1)= 14.00;
+%                          else
+%                              mol_mass(i,1) = 16.00;
+%                          end
+%                      end
+%              end
+%          end
+% %          type = cat(3,type,type,type);
+% %          mol_mass = cat(3,mol_mass,mol_mass,mol_mass);
+%          for i = 1:3
+         Mol(:,:,frame_num) = reshape(mol(:,4),[16,(mol_dim(1)/16)]);
+%          end
+% %          Mol = cat(2,type,mol_mass,Mol);
+%          a=1;
+%          b=1;
+%          Mol_new = [];
+%          
+% %          Mol_H=[];
+% %          Mol_C=[];
+% %          Mol_C_new=[];
+% %          for i = 1:16
+% %              if Mol(i,1)==4
+% %                  Mol_H(a,:,:) = Mol(i,:,:);
+% %                  a = a+1;
+% %              else
+% %                  Mol_C(b,:,:) = Mol(i,:,:);
+% %                  b = b+1;
+% %              end
+% %          end
+% %          Mol_C_new = Mol_C;
+% %          mol_mass_C = (mol_mass)';
+% 
+%          for i = 1:3
+%            for j = 1:16
+%                Mol_new(j,:,i) = mol_mass(j)*Mol(j,:,i);
+%            end
+%          end
+%          
+%          sum_mol_mass = sum(mol_mass);
+%          sum_Mol_new = sum(Mol_new);
+%          center_of_mass(:,:,frame_num) = Mol(:,:,3);
+%          
+             
+         if mod(frame_num,1)==0
+            frame_num
+         end
+        
+        
+end
+
+%%
+ sheet_avg = mean(sheet(:,4));
+ 
+ distance_from_sheet = Mol-sheet_avg;
+ 
+ %%
+ Dim_distance = size(distance_from_sheet);
+ distance_from_sheet = reshape(distance_from_sheet,[(Dim_distance(1)*Dim_distance(2)*Dim_distance(3)),1]);
+ Density = sort(distance_from_sheet);
+ %Density = sort(distance_from_sheet(50,:));
+ %Density = Density(Density<50&Density>-50);
+ Density_size = size(Density);
+ figure
+ hist(Density,100)
+ %%
+ bin_size=0.1;
+ Nbin = ceil((max(Density)-min(Density))/bin_size);
+ figure
+ hist(Density,Nbin)
+ [n,x] = hist(Density,Nbin);
+ figure;
+ plot(x,n,'r-'); %% just an example, plot the pdf with red x's and a line, 
+%%
+                 
+% figure;
+% [n,x]=ksdensity(Density);
+% plot(x,n)
+% %plot(x, cumsum(n)/sum(n)); %% plot the CDF
+%%
+
+
+
+result_y =[];
+result_x =[];
+window_size =10; 
+for i = 1:(Nbin-window_size)
+    result_y(i) = mean(n(i:(i+window_size)));
+    result_x(i) = mean(x(i:(i+window_size)));
+end
+result_y = (result_y/(101*16))*99.13/1000; % converting to density in terms of mg/ml
+figure;
+subplot('position',[0.13 0.5 0.8 0.3]);
+Oplot = plot(result_x,smooth(result_y),'-r')
+xlabel('z[$\AA ]$ ','interpreter','LaTex','fontsize',14,'FontWeight','bold'); ylabel('\rho (z) [g/ml]','fontsize',14,'FontWeight','bold');
+Oplot.LineWidth = 1.5;
+Oplot.Color = 'k';
+Oax = gca;
+set(gca,'Xdir','reverse')
+Oax.LineWidth = 1.5;
+Oax.TickDir = 'out';
+Oax.FontSize = 14;
+Oax.FontWeight = 'bold';
+Oax.XLim = [-60 60];
+Oax.YLim = [0.5 2];
+%Oax.YLim = [5 20];
+%%
+
+figure;
+subplot('position',[0.2 0.15 0.20 0.8]);
+Oplot = plot(smooth(result_y),result_x,'-r')
+ylabel('z[$\AA ]$ ','interpreter','LaTex','fontsize',14,'FontWeight','bold'); xlabel('\rho (z) [g/ml]','fontsize',14,'FontWeight','bold');
+Oplot.LineWidth = 1.5;
+Oplot.Color = 'k';
+Oax = gca;
+Oax.LineWidth = 1.5;
+Oax.TickDir = 'out';
+Oax.FontSize = 14;
+Oax.FontWeight = 'bold';
+Oax.YLim = [-60 60];
+Oax.XLim = [5 20];
+
